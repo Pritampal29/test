@@ -185,3 +185,75 @@ if ( defined( 'JETPACK__VERSION' ) ) {
  */
 
 
+/**
+ * Enqueue JS File
+ */
+function enqueue_load_more_scripts() {
+    wp_enqueue_script('jquery');
+    wp_enqueue_script('load-more', get_template_directory_uri() . '/js/load-more.js', array('jquery'), null, true);
+  
+    wp_localize_script('load-more', 'load_more_params', array(
+        'ajaxurl' => admin_url('admin-ajax.php')
+    ));
+}
+add_action('wp_enqueue_scripts', 'enqueue_load_more_scripts');
+
+/**
+ * Handle Ajax Request
+ */
+function load_more_images() {
+    if (isset($_POST['offset'])) {
+        $offset = intval($_POST['offset']);
+    }
+  
+    $counter = 0;
+    $limit = 3; // Limit per load
+    $total_data = count(get_field('gallery_repeater', 8));
+  
+    ob_start();
+  
+    ?>
+    <div class="container" id="image-gallery">
+        <div class="row">
+            <?php
+            if (have_rows('gallery_repeater', 8)) {
+                while (have_rows('gallery_repeater', 8)) {
+                    the_row();
+                    $image = get_sub_field('images', 8);
+    
+                    if ($counter >= $offset && $counter < $offset + $limit) {
+                        ?>
+                        <a href="<?php echo esc_url($image); ?>" data-toggle="lightbox" data-gallery="gallery" class="col-md-4">
+                            <img src="<?php echo esc_url($image); ?>" class="img-fluid rounded">
+                        </a>
+                        <?php
+                    }
+                    $counter++;
+                }
+            } else {
+                echo 'No rows found';
+                wp_die();
+            }
+            ?>
+        </div>
+        <div id="load-more-less-buttons">
+            <?php if ($total_data > $offset + $limit) { ?>
+                <div id="load-more-wrapper">
+                    <button id="load-more-images" data-offset="<?php echo $offset + $limit; ?>" class="btn btn-primary my-3 load-more-button">Load More</button>
+                </div>
+            <?php } else { ?>
+                <div id="load-less-wrapper" style="display:none;">
+                    <button id="load-less-images" data-limit="<?php echo $offset + $limit - $limit; ?>" class="btn btn-primary my-3 load-less-button">Load Less</button>
+                </div>
+            <?php } ?>
+        </div>
+    </div>
+    <?php
+  
+    $response = ob_get_clean();
+  
+    echo $response;
+    wp_die();
+}
+add_action('wp_ajax_load_more_images', 'load_more_images');
+add_action('wp_ajax_nopriv_load_more_images', 'load_more_images');
